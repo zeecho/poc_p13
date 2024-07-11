@@ -1,18 +1,16 @@
 import { Component, OnInit } from '@angular/core';
+import * as Stomp from '@stomp/stompjs';
 import * as SockJS from 'sockjs-client';
-import { Client, Message } from '@stomp/stompjs';
 
 @Component({
-  selector: 'app-root',
-  templateUrl: './app.component.html',
-  styleUrls: ['./app.component.scss']
+  selector: 'app-chat',
+  templateUrl: './chat.component.html',
 })
-export class AppComponent implements OnInit {
-  title = 'WebSocketChatRoom';
+export class ChatComponent implements OnInit {
   greetings: string[] = [];
   disabled = true;
   newmessage: string = '';
-  private stompClient: Client | null = null;
+  private stompClient: Stomp.Client | null = null;
 
   constructor() {}
 
@@ -29,7 +27,7 @@ export class AppComponent implements OnInit {
 
   connect() {
     const socket = new SockJS('http://localhost:8080/testchat');
-    this.stompClient = new Client({
+    this.stompClient = new Stomp.Client({
       webSocketFactory: () => socket,
       debug: (str) => { console.log(str); },
       reconnectDelay: 5000,
@@ -39,9 +37,10 @@ export class AppComponent implements OnInit {
 
     this.stompClient.onConnect = function (frame) {
       console.log('Connected: ' + frame);
-      _this.stompClient?.subscribe('/start/initial', function (message: Message) {
+      _this.stompClient?.subscribe('/start/initial', function (message) {
         console.log(JSON.parse(message.body));
-        _this.showMessage(JSON.parse(message.body));
+        const parsedMessage = JSON.parse(message.body);
+        _this.showMessage(`${parsedMessage.username}: ${parsedMessage.message}`);
       });
     };
 
@@ -57,7 +56,7 @@ export class AppComponent implements OnInit {
     if (this.stompClient && this.stompClient.connected) {
       this.stompClient.publish({
         destination: '/current/resume',
-        body: JSON.stringify(this.newmessage)
+        body: JSON.stringify({username: localStorage.getItem('username'), message: this.newmessage})
       });
       this.newmessage = '';
     }
@@ -67,4 +66,3 @@ export class AppComponent implements OnInit {
     this.greetings.push(message);
   }
 }
-
